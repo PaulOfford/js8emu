@@ -13,6 +13,9 @@ from .util import epoch_ms_times_1000, rand_snr, rand_tdrift, station_status_id
 
 log = logging.getLogger("js8emu")
 
+# Maximum number of bytes to log for outbound payloads
+MAX_LOG_BYTES = 200
+
 
 class JS8EmuServer:
     def __init__(self, cfg: AppConfig) -> None:
@@ -56,7 +59,7 @@ class JS8EmuServer:
                     iface.conn.close()
                 try:
                     self.sel.unregister(iface.listener)
-                except Exception:
+                except KeyError:
                     pass
                 try:
                     iface.listener.close()
@@ -64,7 +67,7 @@ class JS8EmuServer:
                     pass
             try:
                 self.sel.close()
-            except Exception:
+            except OSError:
                 pass
 
     def run_forever(self) -> None:
@@ -127,6 +130,16 @@ class JS8EmuServer:
             line = bytes(c.recv_buffer[:nl])  # without newline
             del c.recv_buffer[: nl + 1]
 
+            if log.isEnabledFor(logging.DEBUG):
+                shown = line[:MAX_LOG_BYTES]
+                suffix = b"..." if len(line) > MAX_LOG_BYTES else b""
+                log.debug(
+                    "RX ← %-12s %r%s",
+                    iface_name,
+                    shown,
+                    suffix,
+                )
+
             if not line.strip():
                 continue
 
@@ -145,12 +158,22 @@ class JS8EmuServer:
         if c:
             try:
                 self.sel.unregister(c.sock)
-            except Exception:
+            except KeyError:
                 pass
             c.close()
         log.info("%s disconnected.", iface_name)
 
     def _safe_send(self, iface: InterfaceState, payload: bytes) -> None:
+        # Debug logging with payload truncation to avoid log spam
+        if log.isEnabledFor(logging.DEBUG):
+            shown = payload[:MAX_LOG_BYTES]
+            suffix = b"..." if len(payload) > MAX_LOG_BYTES else b""
+            log.debug(
+                "TX → %-12s %r%s",
+                iface.name,
+                shown,
+                suffix,
+            )
         c = iface.conn
         if c is None or c.closed:
             return
@@ -222,7 +245,7 @@ class JS8EmuServer:
         dial = params.get("DIAL")
         try:
             new_freq = int(dial)
-        except Exception:
+        except ValueError:
             log.warning("%s RIG.SET_FREQ invalid DIAL=%r ignored.", iface_name, dial)
             return
 
@@ -252,7 +275,12 @@ class JS8EmuServer:
         if not isinstance(payload, str):
             payload = str(payload)
 
-        fragments = fragment_text(payload, self.cfg.general.fragment_size)
+        # Spec: JS8Emu MUST prefix the payload with the sending interface callsign, colon, and space.
+        # If the client already provided the prefix, do not duplicate it.
+        prefix = f"{sender.callsign}: "
+        full_payload = payload if payload.startswith(prefix) else f"{prefix}{payload}"
+
+        fragments = fragment_text(full_payload, self.cfg.general.fragment_size)
         if not fragments:
             return
 
