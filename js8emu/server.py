@@ -14,7 +14,7 @@ from .util import epoch_ms_times_1000, rand_snr, rand_tdrift, station_status_id
 log = logging.getLogger("js8emu")
 
 # Maximum number of bytes to log for outbound payloads
-MAX_LOG_BYTES = 200
+MAX_LOG_BYTES = 400
 
 
 class JS8EmuServer:
@@ -309,7 +309,7 @@ class JS8EmuServer:
 
             # After full message delivered, emit RX.DIRECTED + RX.SPOT (single write)
             for r in recipients:
-                self._emit_rx_directed_and_spot(sender=sender, receiver=r, original_text=payload)
+                self._emit_rx_directed_and_spot(sender=sender, receiver=r, original_text=full_payload)
 
         self.scheduler.run_in_thread(tx_task, name=f"tx-{sender.callsign}-{epoch_ms_times_1000()}")
 
