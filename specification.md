@@ -196,7 +196,7 @@ where:
 * DIAL is the frequency for this service interface instance.
 * OFFSET is the audio frequency offset for this service interface instance.
 * FREQ is the sum of DIAL and OFFSET.
-* SNR is signal-to-noise ratio and JM8Emu should set a random number between -20 and +20.
+* SNR is signal-to-noise ratio and JM8Emu SHOULD set a random number between -20 and +20.
 * _ID MUST be -1.
 * value is a fragment of the message originally sent using TX.SEND_MESSAGE by another application instance.
 * SPEED is the JS8 transmission mode, which we will default to 1.
@@ -208,7 +208,7 @@ The last RX.ACTIVITY fragment ends with the byte sequence " \xe2\x99\xa2 " which
 
 ### RX.DIRECTED
 
-The following shows the RX.DIRECTED message, delimited with a new line character (\n), concatenated with an RX.SPOT message.  This is how these messages are used by JS8Call and so JM8Emu SHOULD do the same.  The RX.Directed message carries the reassembled message transported in the sequence of RX.ACTIVITY values.
+The following shows the RX.DIRECTED message, delimited with a new line character (\n), concatenated with an RX.SPOT message.  This is how these messages are used by JS8Call and so JS8Emu SHOULD do the same.  The RX.Directed message carries the reassembled message transported in the sequence of RX.ACTIVITY values.
 ```
 b'{"params":{"CMD":" ","DIAL":7078000,"EXTRA":"","FREQ":7080200,"FROM":"M0PXO","GRID":"","OFFSET":2200,"SNR":18,"SPEED":1,"TDRIFT":1.2999999523162842,"TEXT":"M0PXO: 2E0FGO  +E65~\\n65 - 2025-12-05 - FIFA WORLD CUP DRAW ANNOUNCED \xe2\x99\xa2 ","TO":"2E0FGO","UTC":1769179137513,"_ID":-1},"type":"RX.DIRECTED","value":"M0PXO: 2E0FGO  +E65~\\n65 - 2025-12-05 - FIFA WORLD CUP DRAW ANNOUNCED \xe2\x99\xa2 "}\n{"params":{"CALL":"M0PXO","DIAL":7078000,"FREQ":7080200,"GRID":" JO01","OFFSET":2200,"SNR":18,"_ID":-1},"type":"RX.SPOT","value":""}\n'
 ```
@@ -221,7 +221,7 @@ In the RX.DIRECTED message, the meaning of the field values are as follows:
 * FROM is the callsign of the callsign of the interface that originally sent using TX.SEND_MESSAGE that resulted in this message.
 * TO is the callsign that is the second word in the TEXT field, in this case 2E0FGO.
 * EXTRA is an empty string.
-* SNR is signal-to-noise ratio and JM8Emu should set a random number between -20 and +20.
+* SNR is signal-to-noise ratio and JM8Emu SHOULD set a random number between -20 and +20.
 * _ID is always -1.
 * TEXT is the message originally sent using TX.SEND_MESSAGE by another application instance with five bytes appended with these values " \xe2\x99\xa2 ".
 * GRID is an empty string.
@@ -234,7 +234,7 @@ In the RX.SPOT message, the meaning of the field values are as follows:
 
 * CALL is the callsign of the callsign of the interface that originally sent using TX.SEND_MESSAGE that resulted in this message.
 * GRID is the maidenhead locator set by maidenhead in the config.ini file for the interface that has a callsign value the same as the FROM value in the preceding RX.DIRECTED.
-* SNR should be the same as the SNR value in the preceding RX.DIRECTED.
+* SNR SHOULD be the same as the SNR value in the preceding RX.DIRECTED.
 * _ID is always -1.
 * DIAL is the frequency for this service interface instance.
 * OFFSET is the audio frequency offset for this service interface instance.
@@ -270,7 +270,7 @@ With the above in mind, the application you create:
 
 # DELIVERABLE
 
-The deliverable is Python code in a runnable state.  The coding convention should be aligned with PEP 8.  Docstrings should be included following the convention of PEP 257.
+The deliverable is Python code in a runnable state.  The coding convention SHOULD be aligned with PEP 8.  Docstrings SHOULD be included following the convention of PEP 257.
 
 Please implement in a package structure like this:
 ```
@@ -292,5 +292,5 @@ js8emu/
    └─ util.py         ← time, IDs, helpers
 ```
 
-The code should be delivered as a downloadable zip file.
+The code SHOULD be delivered as a downloadable zip file.
 
