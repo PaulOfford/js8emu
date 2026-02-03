@@ -9,6 +9,7 @@ from pathlib import Path
 class GeneralConfig:
     fragment_size: int
     frame_time: float
+    shift_to_upper: bool
 
 
 @dataclass
@@ -45,6 +46,7 @@ def load_config(path: str | Path) -> AppConfig:
     try:
         fragment_size = int(cp["general"]["fragment_size"])
         frame_time = float(cp["general"]["frame_time"])
+        shift_to_upper = bool(cp["general"]["shift_to_upper"])
     except KeyError as e:
         raise ConfigError(f"Missing [general] key: {e}") from e
     except ValueError as e:
@@ -107,6 +109,6 @@ def load_config(path: str | Path) -> AppConfig:
         raise ConfigError("Duplicate interface callsign detected; callsigns must be unique")
 
     return AppConfig(
-        general=GeneralConfig(fragment_size=fragment_size, frame_time=frame_time),
+        general=GeneralConfig(fragment_size=fragment_size, frame_time=frame_time, shift_to_upper=shift_to_upper),
         interfaces=interfaces,
     )

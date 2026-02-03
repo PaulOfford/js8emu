@@ -292,6 +292,9 @@ class JS8EmuServer:
         if not isinstance(payload, str):
             payload = str(payload)
 
+        if self.cfg.general.shift_to_upper:
+            payload = payload.upper()
+
         # Spec: JS8Emu MUST prefix the payload with the sending interface callsign, colon, and space.
         # If the client already provided the prefix, do not duplicate it.
         prefix = f"{sender.callsign}: "
