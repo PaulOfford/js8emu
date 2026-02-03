@@ -186,6 +186,23 @@ class JS8EmuServer:
             # treat as disconnect
             self._disconnect(iface.name)
 
+    def _emit_rig_ptt(self, sender: InterfaceState, *, is_on: bool) -> None:
+        """Emit a RIG.PTT message to the sending application.
+
+        Spec: RIG.PTT ON MUST be sent once the frame_time wait starts (per frame)
+        and RIG.PTT OFF MUST be sent once a frame has been sent.
+        """
+        msg = {
+            "params": {
+                "PTT": bool(is_on),
+                "UTC": epoch_ms_times_1000(),
+                "_ID": -1,
+            },
+            "type": "RIG.PTT",
+            "value": "on" if is_on else "off",
+        }
+        self._safe_send(sender, to_json_line(msg))
+
     # --- Message handling ---
 
     def _handle_message(self, iface_name: str, msg: dict[str, Any]) -> None:
@@ -275,6 +292,9 @@ class JS8EmuServer:
         if not isinstance(payload, str):
             payload = str(payload)
 
+        if self.cfg.general.shift_to_upper:
+            payload = payload.upper()
+
         # Spec: JS8Emu MUST prefix the payload with the sending interface callsign, colon, and space.
         # If the client already provided the prefix, do not duplicate it.
         prefix = f"{sender.callsign}: "
@@ -298,14 +318,31 @@ class JS8EmuServer:
         frame_time = self.cfg.general.frame_time
 
         def tx_task() -> None:
-            # Per sender-receiver pair reassembly: since we own the fragmentation,
-            # each receiver can be reassembled deterministically from this tx.
-            # We'll send RX.ACTIVITY fragments, then RX.DIRECTED + RX.SPOT.
-            for i, frag in enumerate(fragments):
-                if not self.scheduler.sleep(frame_time):
-                    return
+            # We'll send RIG.PTT to the sender, then RX.ACTIVITY fragments to all
+            # recipients on the same frequency, then RX.DIRECTED + RX.SPOT.
+
+            def on_wait_start(_i: int, _frag: str) -> None:
+                self._emit_rig_ptt(sender, is_on=True)
+
+            def on_frame_sent(_i: int, _frag: str) -> None:
+                self._emit_rig_ptt(sender, is_on=False)
+
+            def on_abort(_i: int, _frag: str) -> None:
+                # Ensure we don't leave the application thinking PTT is still on.
+                self._emit_rig_ptt(sender, is_on=False)
+
+            def send_fragment(_i: int, frag: str) -> None:
                 for r in recipients:
                     self._emit_rx_activity(receiver=r, frag=frag)
+
+            self.scheduler.run_frame_sequence(
+                fragments,
+                frame_time,
+                on_wait_start=on_wait_start,
+                on_frame_sent=on_frame_sent,
+                on_abort=on_abort,
+                send_fragment=send_fragment,
+            )
 
             # After full message delivered, emit RX.DIRECTED + RX.SPOT (single write)
             for r in recipients:
@@ -384,4 +421,5 @@ class JS8EmuServer:
         }
 
         payload = to_json_line(directed) + to_json_line(spot)  # must be one TCP send
+        log.info(f"SEND -> {to_call}: {text}")
         self._safe_send(receiver, payload)

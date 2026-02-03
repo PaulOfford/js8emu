@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 log = logging.getLogger("js8emu.scheduler")
 
@@ -30,6 +30,45 @@ class Scheduler:
         t = threading.Thread(target=self._wrap(fn), name=name, daemon=True)
         self._threads.append(t)
         t.start()
+
+    def run_frame_sequence(
+        self,
+        fragments: Sequence[str],
+        frame_time: float,
+        *,
+        on_wait_start: Callable[[int, str], None] | None = None,
+        on_frame_sent: Callable[[int, str], None] | None = None,
+        on_abort: Callable[[int, str], None] | None = None,
+        send_fragment: Callable[[int, str], None],
+    ) -> None:
+        """Run a framed transmission sequence.
+
+        Each fragment is sent after a wait of ``frame_time`` seconds.
+
+        This helper exists so callers can implement JS8Call-like timing and
+        side-effects (e.g., PTT messages) without blocking the selector loop.
+
+        Args:
+            fragments: The fragments to transmit.
+            frame_time: Delay before each fragment is sent.
+            on_wait_start: Called right before the delay for a fragment starts.
+            on_frame_sent: Called immediately after a fragment is sent.
+            on_abort: Called if the scheduler is closed while waiting.
+            send_fragment: Called to actually deliver each fragment.
+        """
+        for i, frag in enumerate(fragments):
+            if on_wait_start:
+                on_wait_start(i, frag)
+
+            if not self.sleep(frame_time):
+                if on_abort:
+                    on_abort(i, frag)
+                return
+
+            send_fragment(i, frag)
+
+            if on_frame_sent:
+                on_frame_sent(i, frag)
 
     def sleep(self, seconds: float) -> bool:
         """Returns False if scheduler closed while sleeping."""
